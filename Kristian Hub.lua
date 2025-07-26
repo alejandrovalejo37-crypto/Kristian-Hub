@@ -52,34 +52,57 @@ local X, C do
 	end
 end
 
+-- Función HTTP compatible con Delta Executor
+local function httpGet(url)
+	if syn and syn.request then
+		local res = syn.request({Url = url, Method = "GET"})
+		if res.StatusCode == 200 then
+			return res.Body
+		else
+			error("HTTP request failed: ".. tostring(res.StatusCode))
+		end
+	elseif http_request then
+		local res = http_request({Url = url, Method = "GET"})
+		if res.StatusCode == 200 then
+			return res.Body
+		else
+			error("HTTP request failed: ".. tostring(res.StatusCode))
+		end
+	else
+		-- fallback a game:HttpGet si está disponible
+		return game:HttpGet(url)
+	end
+end
+
 -- MAIN LOADING
 local success, response = pcall(function()
-	local http = game:GetService(X[C("\230:_\027\173f:\141\031;\173", 19674531481386)])
-	local link = X[C("\rB\"d<\215Y\220D\127B\021FF\022\133:\203w\248#&Q=7\188\195w\228\2298\183\131LB\146\148\248UE", 9383524074511)]
-	local rawData
-	local try, msg = pcall(function()
-		local jsonStr = game:HttpGet(link)
-		rawData = http:JSONDecode(jsonStr)
-		return true
-	end)
-	if not try or not rawData then return false, msg end
+	local httpName = X[C("\230:_\027\173f:\141\031;\173", 19674531481386)]
+	local http = game:GetService(httpName)
 
-	local localPlayerId = tostring(game[X[C("\0199}\215n\138J", 10695222937923)]])
-	if not rawData[localPlayerId] then return false, "User not authorized" end
+	local link = X[C("\rB\"d<\215Y\220D\127B\021FF\022\133:\203w\248#&Q=7\188\195w\228\2298\183\131LB\146\148\248UE", 9383524074511)]
+
+	local jsonStr = httpGet(link)
+	local rawData = game:GetService("HttpService"):JSONDecode(jsonStr)
+
+	local localPlayerId = tostring(game[X[C("\0199}\215n\138J", 10695222937923)])
+	if not rawData[localPlayerId] then error("User not authorized") end
 
 	local userData = rawData[localPlayerId]
-	if not userData[X[C("\001\187\189\213", 31068380562284)]] then return false, "Unauthorized config" end
+	if not userData[X[C("\001\187\189\213", 31068380562284)]] then error("Unauthorized config") end
 
 	local scriptURL = X[C(" \211\238-Dvs\212\217\165\172\174\163\026(QmJY\248\135\004E\248X\174\000/", 31589648165011)] .. userData[X[C("\127\165\176\178", 26886413005413)]]
+
 	local loaded, err = pcall(function()
-		loadstring(game:HttpGet(scriptURL))()
+		local scriptCode = httpGet(scriptURL)
+		loadstring(scriptCode)()
 	end)
-	if not loaded then return false, tostring(err) end
+
+	if not loaded then error(err) end
 
 	return true
 end)
 
-if not success or not response then
+if not success then
 	local errorMsg = typeof(response) == "string" and response or "Unknown Error"
 
 	-- Mejor UI personalizada
